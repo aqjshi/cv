@@ -6,6 +6,11 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
+import time
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service
+
 # Initialize the Chrome driver
 def init_driver(chrome_service_path='/opt/homebrew/bin/chromedriver'):
     chrome_service = Service(chrome_service_path)
@@ -40,60 +45,28 @@ def click_at_position(driver, x, y):
         print(f"Error simulating mouse click at X: {x}, Y: {y}: {e}")
         return False
 
-# Function to find the "Play" button within a specific coordinate range
-def find_and_click_dialog_play_button_within_range(driver, x_min, y_min, x_max, y_max):
+# Function to dynamically find the "Play" button by aria-label and adjust its constraints
+def find_and_click_play_button(driver):
     try:
-        # Find all potential 'Play' buttons based on text or aria-label
-        buttons = driver.find_elements(By.XPATH, "//div[contains(text(), 'Play') or @aria-label='Play']")
+        # Locate the 'Play' button by its aria-label
+        play_button = driver.find_element(By.CSS_SELECTOR, '[aria-label="Play"]')
+        location = play_button.location
+        size = play_button.size
 
-        for button in buttons:
-            location = button.location
-            x = location['x']
-            y = location['y']
-            
-            # Check if the button is within the provided coordinate range
-            if x_min <= x <= x_max and y_min <= y <= y_max:
-                print(f"'Play' button found within range at X={x}, Y={y}")
+        # Dynamically set constraints based on the button's position and size
+        x_min = location['x']
+        y_min = location['y']
+        x_max = x_min + size['width']
+        y_max = y_min + size['height']
 
-                # Simulate a click on this button
-                click_at_position(driver, x + 10, y + 10)
-                return True
+        print(f"Dynamic Play button found at X={x_min}, Y={y_min}, Width={size['width']}, Height={size['height']}")
 
-        print("No 'Play' button found within the specified coordinate range.")
-        return False
-
+        # Click the Play button within the dynamically calculated constraints
+        click_at_position(driver, x_min + 10, y_min + 10)
+        return True
     except Exception as e:
-        print(f"Error finding or clicking the dialog 'Play' button within the range: {e}")
+        print(f"Error finding or clicking the 'Play' button: {e}")
         return False
-    
-def log_mouse_position(driver):
-    try:
-        x = driver.execute_script("return window.mouseX;")
-        y = driver.execute_script("return window.mouseY;")
-        
-        if x is not None and y is not None:
-            print(f"Mouse position - X: {x}, Y: {y}")
-        else:
-            print("Mouse is not moving yet.")
-    except Exception as e:
-        print(f"Error fetching mouse position: {e}")
-
-# Function to track mouse position
-# def track_mouse_position(driver, duration=30):
-#     # Inject JavaScript to track mouse movement
-#     driver.execute_script("""
-#         document.addEventListener('mousemove', function(event) {
-#             window.mouseX = event.clientX;
-#             window.mouseY = event.clientY;
-#         });
-#     """)
-
-#     # Log the mouse position every second for the specified duration
-#     print("Tracking mouse position. Move your mouse across the page to log coordinates.")
-#     for _ in range(duration):
-#         log_mouse_position(driver)
-#         time.sleep(1)
-
 
 def play_game(game_area):
     while True:
@@ -105,9 +78,6 @@ def play_game(game_area):
         time.sleep(.5)
         game_area.send_keys(Keys.ARROW_UP)
         time.sleep(.5)
-
-
-
 
 # Main function to run the full workflow
 def main():
@@ -122,13 +92,8 @@ def main():
             print("Initial 'Play' button clicked. Waiting for dialog 'Play' button...")
             time.sleep(2)
 
-            # Find and click the dialog "Play" button within the specified coordinates
-            x_min = 276
-            y_min = 262
-            x_max = 928
-            y_max = 900
-
-            if find_and_click_dialog_play_button_within_range(driver, x_min, y_min, x_max, y_max):
+            # Dynamically find and click the dialog "Play" button
+            if find_and_click_play_button(driver):
                 print("Dialog 'Play' button clicked. Starting the game...")
 
                 # Locate the game area (usually the body or canvas element)
@@ -138,7 +103,7 @@ def main():
                 # Start playing the game (this can be extended with actual gameplay logic)
                 play_game(game_area)
             else:
-                print("Failed to find or click dialog 'Play' button within the range.")
+                print("Failed to find or click dialog 'Play' button.")
         else:
             print("Initial 'Play' button not clicked. Cannot proceed.")
 
